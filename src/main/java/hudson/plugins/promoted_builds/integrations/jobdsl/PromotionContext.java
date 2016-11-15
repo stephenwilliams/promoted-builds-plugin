@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javaposse.jobdsl.dsl.Context;
+import javaposse.jobdsl.dsl.helpers.publisher.PublisherContext;
 import javaposse.jobdsl.dsl.helpers.step.StepContext;
 
 import javaposse.jobdsl.plugin.DslEnvironment;
@@ -82,6 +83,13 @@ class PromotionContext implements Context {
         StepContext stepContext = dslEnvironment.createContext(StepContext.class);
         executeInContext(actionsClosure, stepContext);
         actions.addAll(stepContext.getStepNodes());
+    }
+
+    public void publisherActions(Closure<?> actionsClosure) {
+        // delegate to PublisherContext
+        PublisherContext publisherContext = dslEnvironment.createContext(PublisherContext.class);
+        executeInContext(actionsClosure, publisherContext);
+        actions.addAll(publisherContext.getPublisherNodes());
     }
 
     public List<PromotionCondition> getConditions() {
