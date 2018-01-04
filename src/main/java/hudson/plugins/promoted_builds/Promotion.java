@@ -2,9 +2,12 @@ package hudson.plugins.promoted_builds;
 
 import hudson.EnvVars;
 import hudson.FilePath;
+import hudson.console.ConsoleLogFilter;
 import hudson.console.HyperlinkNote;
 import hudson.model.Action;
 import hudson.model.BuildListener;
+import hudson.model.BuildableItemWithBuildWrappers;
+import hudson.model.StreamBuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Cause.UserCause;
@@ -37,6 +40,7 @@ import org.kohsuke.stapler.export.Exported;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -51,6 +55,9 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.stapler.HttpResponses;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 
 /**
  * Records a promotion process.
@@ -80,7 +87,7 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion> {
     @Exported
     public AbstractBuild<?,?> getTarget() {
         PromotionTargetAction pta = getAction(PromotionTargetAction.class);
-        return pta.resolve(this);
+        return pta == null ? null : pta.resolve(this);
     }
 
     @Override public AbstractBuild<?,?> getRootBuild() {
@@ -281,8 +288,14 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion> {
     	return definitions;
     }
 
+    public void doRebuild(StaplerRequest req, StaplerResponse rsp) throws IOException {
+        throw HttpResponses.error(404, "Promotions may not be rebuilt directly");
+    }
+
     public void run() {
-        getStatus().addPromotionAttempt(this);
+        if (getTarget() != null) {
+            getStatus().addPromotionAttempt(this);
+        }
         run(new RunnerImpl(this));
     }
 
@@ -295,6 +308,9 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion> {
         
         @Override
         protected Lease decideWorkspace(Node n, WorkspaceList wsl) throws InterruptedException, IOException {
+            if (getTarget() == null) {
+                throw new IOException("No Promotion target, cannot retrieve workspace");
+            }
             String customWorkspace = Promotion.this.getProject().getCustomWorkspace();
             if (customWorkspace != null) {
                 final FilePath rootPath = n.getRootPath();
@@ -316,6 +332,22 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion> {
 
         protected Result doRun(BuildListener listener) throws Exception {
             AbstractBuild<?, ?> target = getTarget();
+
+            OutputStream logger = listener.getLogger();
+            AbstractProject rootProject = project.getRootProject();
+            // Global log filters
+            for (ConsoleLogFilter filter : ConsoleLogFilter.all()) {
+                logger = filter.decorateLogger(target, logger);
+            }
+
+            // Project specific log filters
+            if (rootProject instanceof BuildableItemWithBuildWrappers) {
+                BuildableItemWithBuildWrappers biwbw = (BuildableItemWithBuildWrappers) rootProject;
+                for (BuildWrapper bw : biwbw.getBuildWrappersList()) {
+                    logger = bw.decorateLogger(target, logger);
+                }
+            }
+            listener = new StreamBuildListener(logger);
 
             listener.getLogger().println(
                 Messages.Promotion_RunnerImpl_Promoting(
@@ -363,6 +395,11 @@ public class Promotion extends AbstractBuild<PromotionProcess,Promotion> {
         }
 
         protected void post2(BuildListener listener) throws Exception {
+            if (getTarget() == null) {
+                listener.error("No Promotion target, cannot save target or update status");
+                return;
+            }
+
             if(getResult()== Result.SUCCESS)
                 getStatus().onSuccessfulPromotion(Promotion.this);
             // persist the updated build record
