@@ -12,12 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import jenkins.model.Jenkins;
+import org.kohsuke.stapler.export.ExportedBean;
 
 /**
  * Extension point for defining a promotion criteria.
  *
  * @author Kohsuke Kawaguchi
  */
+@ExportedBean
 public abstract class PromotionCondition implements ExtensionPoint, Describable<PromotionCondition> {
     /**
      * Checks if the promotion criteria is met.

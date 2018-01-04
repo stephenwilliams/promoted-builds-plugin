@@ -49,6 +49,7 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.export.Exported;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
@@ -211,6 +212,11 @@ public final class PromotionProcess extends AbstractProject<PromotionProcess,Pro
 
     public List<BuildStep> getBuildSteps() {
         return buildSteps;
+    }
+
+    @Exported
+    public DescribableList<PromotionCondition, PromotionConditionDescriptor> getConditions() {
+        return conditions;
     }
 
     /**

@@ -43,6 +43,7 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 
 /**
  * {@link PromotionCondition} that requires manual promotion.
@@ -50,6 +51,7 @@ import org.kohsuke.stapler.export.Exported;
  * @author Kohsuke Kawaguchi
  * @author Peter Hayes
  */
+@ExportedBean
 public class ManualCondition extends PromotionCondition {
     private String users;
     private List<ParameterDefinition> parameterDefinitions = new ArrayList<ParameterDefinition>();
@@ -66,6 +68,7 @@ public class ManualCondition extends PromotionCondition {
      * Restrict the Condition to specific user(s)
      * @since 2.24
      */
+    @Exported
     public String getUsers() {
         return users;
     }
